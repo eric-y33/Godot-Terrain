@@ -96,6 +96,10 @@ var p_shader : RID
 var p_wire_shader : RID
 var clear_colors := PackedColorArray([Color.DARK_BLUE])
 
+var vertex_buffer_copy : PackedFloat32Array
+var index_buffer_copy : PackedInt32Array
+var wire_index_buffer_copy : PackedInt32Array
+
 func _init():
 	effect_callback_type = CompositorEffect.EFFECT_CALLBACK_TYPE_POST_TRANSPARENT
 	
@@ -123,10 +127,11 @@ func compile_shader(vertex_shader : String, fragment_shader : String) -> RID:
 	
 	return shader
 
-func initialize_render(framebuffer_format : int):
+func initialize_shaders():
 	p_shader = compile_shader(source_vertex, source_fragment)
 	p_wire_shader = compile_shader(source_vertex, source_wire_fragment)
 
+func initialize_mesh():
 	var vertex_buffer := PackedFloat32Array([])
 	var half_length = (side_length - 1) / 2.0
 
@@ -191,6 +196,7 @@ func initialize_render(framebuffer_format : int):
 	
 	var vertex_buffer_bytes : PackedByteArray = vertex_buffer.to_byte_array()
 	p_vertex_buffer = rd.vertex_buffer_create(vertex_buffer_bytes.size(), vertex_buffer_bytes)
+	vertex_buffer_copy = vertex_buffer
 	
 	var vertex_buffers := [p_vertex_buffer, p_vertex_buffer]
 	
@@ -216,14 +222,37 @@ func initialize_render(framebuffer_format : int):
 
 	var index_buffer_bytes : PackedByteArray = index_buffer.to_byte_array()
 	p_index_buffer = rd.index_buffer_create(index_buffer.size(), rd.INDEX_BUFFER_FORMAT_UINT32, index_buffer_bytes)
+	index_buffer_copy = index_buffer
 	
 	var wire_index_buffer_bytes : PackedByteArray = wire_index_buffer.to_byte_array()
 	p_wire_index_buffer = rd.index_buffer_create(wire_index_buffer.size(), rd.INDEX_BUFFER_FORMAT_UINT32, wire_index_buffer_bytes)
+	wire_index_buffer_copy = wire_index_buffer
 
 	p_index_array = rd.index_array_create(p_index_buffer, 0, index_buffer.size())
 	p_wire_index_array = rd.index_array_create(p_wire_index_buffer, 0, wire_index_buffer.size())
 	
 
+func initialize_arrays_and_buffers():
+	var stride := 7
+	
+	var vertex_buffer_bytes : PackedByteArray = vertex_buffer_copy.to_byte_array()
+	p_vertex_buffer = rd.vertex_buffer_create(vertex_buffer_bytes.size(), vertex_buffer_bytes)
+	
+	var vertex_buffers := [p_vertex_buffer, p_vertex_buffer]
+	p_vertex_array = rd.vertex_array_create(vertex_buffer_copy.size() / stride, vertex_format, vertex_buffers)
+	
+	var index_buffer_bytes : PackedByteArray = index_buffer_copy.to_byte_array()
+	p_index_buffer = rd.index_buffer_create(index_buffer_copy.size(), rd.INDEX_BUFFER_FORMAT_UINT32, index_buffer_bytes)
+	
+	var wire_index_buffer_bytes : PackedByteArray = wire_index_buffer_copy.to_byte_array()
+	p_wire_index_buffer = rd.index_buffer_create(wire_index_buffer_copy.size(), rd.INDEX_BUFFER_FORMAT_UINT32, wire_index_buffer_bytes)
+	
+	p_index_array = rd.index_array_create(p_index_buffer, 0, index_buffer_copy.size())
+	p_wire_index_array = rd.index_array_create(p_wire_index_buffer, 0, wire_index_buffer_copy.size())
+	
+func initialize_render(framebuffer_format : int):
+	initialize_shaders()
+	initialize_mesh()
 	initialize_render_pipelines(framebuffer_format)
 
 # Initialization of the render pipeline objects is separated from the above code so that we don't have to regenerate everything when the framebuffer format changes
@@ -244,10 +273,9 @@ func initialize_render_pipelines(framebuffer_format : int) -> void:
 	var blend = RDPipelineColorBlendState.new()
 	
 	blend.attachments.push_back(RDPipelineColorBlendStateAttachment.new())
-
+	
 	p_render_pipeline = rd.render_pipeline_create(p_shader, framebuffer_format, vertex_format, rd.RENDER_PRIMITIVE_TRIANGLES, raster_state, RDPipelineMultisampleState.new(), depth_state, blend)
 	p_wire_render_pipeline = rd.render_pipeline_create(p_wire_shader, framebuffer_format, vertex_format, rd.RENDER_PRIMITIVE_LINES, raster_state, RDPipelineMultisampleState.new(), depth_state, blend)
-
 
 
 func _render_callback(_effect_callback_type : int, render_data : RenderData):
@@ -258,11 +286,18 @@ func _render_callback(_effect_callback_type : int, render_data : RenderData):
 	var render_scene_data : RenderSceneData = render_data.get_render_scene_data()
 	
 	if not render_scene_buffers: return
-
-	if regenerate or not p_render_pipeline.is_valid():
+	
+	if not p_render_pipeline.is_valid():
 		_notification(NOTIFICATION_PREDELETE)
 		p_framebuffer = FramebufferCacheRD.get_cache_multipass([render_scene_buffers.get_color_texture(), render_scene_buffers.get_depth_texture()], [], 1)
 		initialize_render(rd.framebuffer_get_format(p_framebuffer))
+
+	if regenerate:
+		_notification(NOTIFICATION_PREDELETE)
+		p_framebuffer = FramebufferCacheRD.get_cache_multipass([render_scene_buffers.get_color_texture(), render_scene_buffers.get_depth_texture()], [], 1)
+		initialize_shaders()
+		initialize_arrays_and_buffers()
+		initialize_render_pipelines(rd.framebuffer_get_format(p_framebuffer))
 		regenerate = false
 
 	var current_framebuffer = FramebufferCacheRD.get_cache_multipass([render_scene_buffers.get_color_texture(), render_scene_buffers.get_depth_texture()], [], 1)
