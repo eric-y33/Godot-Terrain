@@ -250,9 +250,16 @@ func initialize_arrays_and_buffers():
 	p_index_array = rd.index_array_create(p_index_buffer, 0, index_buffer_copy.size())
 	p_wire_index_array = rd.index_array_create(p_wire_index_buffer, 0, wire_index_buffer_copy.size())
 	
+# Recompile shaders and regenerate mesh
 func initialize_render(framebuffer_format : int):
 	initialize_shaders()
 	initialize_mesh()
+	initialize_render_pipelines(framebuffer_format)
+	
+# Recompmile shaders but don't regenerate mesh
+func initialize_shaders_and_pipelines(framebuffer_format : int):
+	initialize_shaders()
+	initialize_arrays_and_buffers()
 	initialize_render_pipelines(framebuffer_format)
 
 # Initialization of the render pipeline objects is separated from the above code so that we don't have to regenerate everything when the framebuffer format changes
@@ -295,9 +302,7 @@ func _render_callback(_effect_callback_type : int, render_data : RenderData):
 	if regenerate:
 		_notification(NOTIFICATION_PREDELETE)
 		p_framebuffer = FramebufferCacheRD.get_cache_multipass([render_scene_buffers.get_color_texture(), render_scene_buffers.get_depth_texture()], [], 1)
-		initialize_shaders()
-		initialize_arrays_and_buffers()
-		initialize_render_pipelines(rd.framebuffer_get_format(p_framebuffer))
+		initialize_shaders_and_pipelines(rd.framebuffer_get_format(p_framebuffer))
 		regenerate = false
 
 	var current_framebuffer = FramebufferCacheRD.get_cache_multipass([render_scene_buffers.get_color_texture(), render_scene_buffers.get_depth_texture()], [], 1)
