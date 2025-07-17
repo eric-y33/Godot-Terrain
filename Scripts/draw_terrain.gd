@@ -75,6 +75,18 @@ class_name DrawTerrainMesh extends CompositorEffect
 @export var ambient_light : Color = Color.DIM_GRAY
 
 
+@export_group("Fog Settings")
+
+## Color
+@export var fog_color : Color = Color(0.1, 0.2, 0.3)
+
+## Min distance at which fog starts
+@export var fog_min_dist : float = 50.0
+
+## Max distance beyond which fog is most intense
+@export var fog_max_dist : float = 100.0
+
+
 var transform : Transform3D
 var light : DirectionalLight3D
 
@@ -338,6 +350,8 @@ func _render_callback(_effect_callback_type : int, render_data : RenderData):
 			push_error("No light source detected please put a DirectionalLight3D into the scene thank you")
 	else:
 		light_direction = light.transform.basis.z.normalized()
+		
+	var camera_world_position = render_scene_data.get_cam_transform().origin
 
 	# Store all shader uniforms in a gpu data buffer, this isn't exactly the optimal data layout, each 1.0 push back is wasted space
 	buffer.push_back(light_direction.x)
@@ -375,6 +389,18 @@ func _render_callback(_effect_callback_type : int, render_data : RenderData):
 	buffer.push_back(ambient_light.r)
 	buffer.push_back(ambient_light.g)
 	buffer.push_back(ambient_light.b)
+	buffer.push_back(1.0)
+	buffer.push_back(camera_world_position.x)
+	buffer.push_back(camera_world_position.y)
+	buffer.push_back(camera_world_position.z)
+	buffer.push_back(1.0)
+	buffer.push_back(fog_color.r)
+	buffer.push_back(fog_color.g)
+	buffer.push_back(fog_color.b)
+	buffer.push_back(1.0)
+	buffer.push_back(fog_min_dist)
+	buffer.push_back(1.0)
+	buffer.push_back(fog_max_dist)
 	buffer.push_back(1.0)
 	
 
@@ -469,6 +495,10 @@ const source_vertex = "
 			float _FrequencyVarianceUpperBound;
 			float _SlopeDamping;
 			vec4 _AmbientLight;
+			vec3 _CameraWorldPosition;
+			vec3 _FogColor;
+			float _FogMinDist;
+			float _FogMaxDist;
 		};
 		
 		// This is the vertex data layout that we defined in initialize_render after line 198
@@ -633,7 +663,6 @@ const source_vertex = "
 		}
 		"
 
-
 const source_fragment = "
 		#version 450
 
@@ -660,6 +689,10 @@ const source_fragment = "
 			float _FrequencyVarianceUpperBound;
 			float _SlopeDamping;
 			vec4 _AmbientLight;
+			vec3 _CameraWorldPosition;
+			vec3 _FogColor;
+			float _FogMinDist;
+			float _FogMaxDist;
 		};
 		
 		// These are the variables that we expect to receive from the vertex shader
@@ -802,6 +835,20 @@ const source_fragment = "
 			return vec3(height, grad);
 		}
 		
+		float calc_linear_fog_factor() {
+			float camera_to_pixel_dist = length(pos - _CameraWorldPosition);
+			float fog_range = _FogMaxDist - _FogMinDist;
+			float fog_dist = _FogMaxDist - camera_to_pixel_dist;
+			float fog_factor = fog_dist / fog_range;
+			fog_factor = clamp(fog_factor, 0.0, 1.0);
+			return fog_factor;
+		}
+		
+		float calc_fog_factor() {
+			float fog_factor = calc_linear_fog_factor();
+			return fog_factor;
+		}
+		
 		void main() {
 			// Recalculate initial noise sampling position same as vertex shader
 			vec3 noise_pos = (pos + vec3(_Offset.x, 0, _Offset.z)) / _Scale;
@@ -830,6 +877,12 @@ const source_fragment = "
 
 			// Combine lighting values, clip to prevent pixel values greater than 1 which would really really mess up the gamma correction below
 			vec4 lit = clamp(direct_light + ambient_light, vec4(0), vec4(1));
+			
+			// Add fog
+			if (_FogColor != vec3(0)) {
+				float fog_factor = calc_fog_factor();
+				lit = mix(vec4(_FogColor, 1.0), lit, fog_factor);
+			}
 
 			// Convert from linear rgb to srgb for proper color output, ideally you'd do this as some final post processing effect because otherwise you will need to revert this gamma correction elsewhere
 			frag_color = pow(lit, vec4(2.2));
@@ -862,6 +915,10 @@ const source_wire_fragment = "
 			float _FrequencyVarianceUpperBound;
 			float _SlopeDamping;
 			vec4 _AmbientLight;
+			vec3 _CameraWorldPosition;
+			vec3 _FogColor;
+			float _FogMinDist;
+			float _FogMaxDist;
 		};
 		
 		layout(location = 2) in vec4 a_Color;
