@@ -78,13 +78,16 @@ class_name DrawTerrainMesh extends CompositorEffect
 @export_group("Fog Settings")
 
 ## Color
-@export var fog_color : Color = Color(0.1, 0.2, 0.3)
+@export var fog_color : Color = Color(0.47, 0.60, 0.77)
 
 ## Min distance at which fog starts
-@export var fog_min_dist : float = 50.0
+@export_range(0.0, 200.0) var fog_min_dist : float = 7.0
 
 ## Max distance beyond which fog is most intense
-@export var fog_max_dist : float = 100.0
+@export_range(0.0, 200.0) var fog_max_dist : float = 125.0
+
+## Fog density when exponential fog is used in fragment shader
+@export_range(0.0, 5.0) var exp_fog_density : float = 1.0 
 
 
 var transform : Transform3D
@@ -399,8 +402,8 @@ func _render_callback(_effect_callback_type : int, render_data : RenderData):
 	buffer.push_back(fog_color.b)
 	buffer.push_back(1.0)
 	buffer.push_back(fog_min_dist)
-	buffer.push_back(1.0)
 	buffer.push_back(fog_max_dist)
+	buffer.push_back(exp_fog_density)
 	buffer.push_back(1.0)
 	
 
@@ -496,9 +499,10 @@ const source_vertex = "
 			float _SlopeDamping;
 			vec4 _AmbientLight;
 			vec3 _CameraWorldPosition;
-			vec3 _FogColor;
+			vec4 _FogColor;
 			float _FogMinDist;
 			float _FogMaxDist;
+			float _ExpFogDensity;
 		};
 		
 		// This is the vertex data layout that we defined in initialize_render after line 198
@@ -690,9 +694,10 @@ const source_fragment = "
 			float _SlopeDamping;
 			vec4 _AmbientLight;
 			vec3 _CameraWorldPosition;
-			vec3 _FogColor;
+			vec4 _FogColor;
 			float _FogMinDist;
 			float _FogMaxDist;
+			float _ExpFogDensity;
 		};
 		
 		// These are the variables that we expect to receive from the vertex shader
@@ -844,8 +849,15 @@ const source_fragment = "
 			return fog_factor;
 		}
 		
+		float calc_exponential_fog_factor() {
+			float camera_to_pixel_dist = length(pos - _CameraWorldPosition);
+			float dist_ratio = 4.0 * camera_to_pixel_dist / _FogMaxDist;
+			float fog_factor = exp(-dist_ratio * _ExpFogDensity);
+			return fog_factor;
+		}
+		
 		float calc_fog_factor() {
-			float fog_factor = calc_linear_fog_factor();
+			float fog_factor = calc_exponential_fog_factor();
 			return fog_factor;
 		}
 		
@@ -879,9 +891,9 @@ const source_fragment = "
 			vec4 lit = clamp(direct_light + ambient_light, vec4(0), vec4(1));
 			
 			// Add fog
-			if (_FogColor != vec3(0)) {
+			if (_FogColor != vec4(0)) {
 				float fog_factor = calc_fog_factor();
-				lit = mix(vec4(_FogColor, 1.0), lit, fog_factor);
+				lit = mix(_FogColor, lit, fog_factor);
 			}
 
 			// Convert from linear rgb to srgb for proper color output, ideally you'd do this as some final post processing effect because otherwise you will need to revert this gamma correction elsewhere
@@ -916,9 +928,10 @@ const source_wire_fragment = "
 			float _SlopeDamping;
 			vec4 _AmbientLight;
 			vec3 _CameraWorldPosition;
-			vec3 _FogColor;
+			vec4 _FogColor;
 			float _FogMinDist;
 			float _FogMaxDist;
+			float _ExpFogDensity;
 		};
 		
 		layout(location = 2) in vec4 a_Color;

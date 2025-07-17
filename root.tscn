@@ -41,9 +41,10 @@ slope_threshold = Vector2(0.84, 0.98)
 low_slope_color = Color(0.831373, 0.878431, 0.941176, 1)
 high_slope_color = Color(0.156424, 0.14606, 0.198592, 1)
 ambient_light = Color(0.411765, 0.411765, 0.411765, 1)
-fog_color = Color(0.470421, 0.604277, 0.831105, 1)
-fog_min_dist = 80.0
-fog_max_dist = 800.0
+fog_color = Color(0.47, 0.6, 0.77, 1)
+fog_min_dist = 10.156
+fog_max_dist = 110.753
+exp_fog_density = 0.454
 metadata/_custom_type_script = "uid://7n58awc2ols0"
 
 [sub_resource type="Compositor" id="Compositor_1i1cu"]
