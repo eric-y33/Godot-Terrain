@@ -74,6 +74,9 @@ class_name DrawTerrainMesh extends CompositorEffect
 ## Additive light adjustment
 @export var ambient_light : Color = Color.DIM_GRAY
 
+## Specular highlight intensity, lower values make it brighter
+@export_range(0.0, 10.0) var specular_highlight : float = 2.0
+
 
 @export_group("Fog Settings")
 
@@ -404,7 +407,7 @@ func _render_callback(_effect_callback_type : int, render_data : RenderData):
 	buffer.push_back(fog_min_dist)
 	buffer.push_back(fog_max_dist)
 	buffer.push_back(exp_fog_density)
-	buffer.push_back(1.0)
+	buffer.push_back(specular_highlight)
 	
 
 	# All of our settings are stored in a single uniform buffer, certainly not the best decision, but it's easy to work with
@@ -503,6 +506,7 @@ const source_vertex = "
 			float _FogMinDist;
 			float _FogMaxDist;
 			float _ExpFogDensity;
+			float _SpecularHighlight;
 		};
 		
 		// This is the vertex data layout that we defined in initialize_render after line 198
@@ -698,6 +702,7 @@ const source_fragment = "
 			float _FogMinDist;
 			float _FogMaxDist;
 			float _ExpFogDensity;
+			float _SpecularHighlight;
 		};
 		
 		// These are the variables that we expect to receive from the vertex shader
@@ -882,13 +887,19 @@ const source_fragment = "
 
 			// Lambertian diffuse, negative dot product values clamped off because negative light doesn't exist
 			float ndotl = clamp(dot(_LightDirection, normal), 0, 1);
-
+			
+			// Specular highlight
+			vec3 pixel_to_camera_direction = normalize(_CameraWorldPosition - pos);
+			vec3 halfway_direction = normalize(-_LightDirection + pixel_to_camera_direction);
+			float specular_intensity = pow(dot(halfway_direction, normal), _SpecularHighlight);
+			
 			// Direct light cares about the diffuse result, ambient light does not
 			vec4 direct_light = albedo * ndotl;
 			vec4 ambient_light = albedo * _AmbientLight;
+			vec4 specular_light = albedo * specular_intensity;
 
 			// Combine lighting values, clip to prevent pixel values greater than 1 which would really really mess up the gamma correction below
-			vec4 lit = clamp(direct_light + ambient_light, vec4(0), vec4(1));
+			vec4 lit = clamp(direct_light + ambient_light + specular_light, vec4(0), vec4(1));
 			
 			// Add fog
 			if (_FogColor != vec4(0)) {
@@ -932,6 +943,7 @@ const source_wire_fragment = "
 			float _FogMinDist;
 			float _FogMaxDist;
 			float _ExpFogDensity;
+			float _SpecularHighlight;
 		};
 		
 		layout(location = 2) in vec4 a_Color;
