@@ -891,7 +891,7 @@ const source_fragment = "
 			// Specular highlight
 			vec3 pixel_to_camera_direction = normalize(_CameraWorldPosition - pos);
 			vec3 halfway_direction = normalize(-_LightDirection + pixel_to_camera_direction);
-			float specular_intensity = pow(dot(halfway_direction, normal), _SpecularHighlight);
+			float specular_intensity = pow(clamp(dot(halfway_direction, normal), 0, 1), _SpecularHighlight);
 			
 			// Direct light cares about the diffuse result, ambient light does not
 			vec4 direct_light = albedo * ndotl;
