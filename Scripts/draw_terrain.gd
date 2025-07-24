@@ -75,7 +75,7 @@ class_name DrawTerrainMesh extends CompositorEffect
 @export var ambient_light : Color = Color.DIM_GRAY
 
 ## Specular highlight intensity, lower values make it brighter
-@export_range(0.0, 10.0) var specular_highlight : float = 2.0
+@export_range(0.0, 20.0) var specular_highlight : float = 2.0
 
 
 @export_group("Fog Settings")
@@ -866,6 +866,34 @@ const source_fragment = "
 			return fog_factor;
 		}
 		
+		// return height of terrain above/at/below given point
+		float get_terrain_height(vec3 position) {
+			vec3 noise_pos = (position + vec3(_Offset.x, 0, _Offset.z)) / _Scale;
+			vec3 n = fbm(noise_pos.xz);
+			return _TerrainHeight * n.x + _TerrainHeight - _Offset.y;
+		}
+		
+		// return 0 or 1 indicating if the point is blocked by other terrain (1 = unobstructed)
+		float calc_shadow_value(float steps) {
+			float max_height = 50.0;
+			
+			float step_size = 1.0;
+			float dist = 0.1;
+			
+			for (int i = 0; i<steps; i++) {
+				vec3 current_position = pos + dist * (_LightDirection);
+				
+				if (current_position.y >= max_height) break;
+				float terrain_height = get_terrain_height(current_position);
+				if (current_position.y - terrain_height < 0.001) {
+					return 0.0;
+				}
+				
+				dist += step_size;
+			}
+			return 1.0;
+		}
+		
 		void main() {
 			// Recalculate initial noise sampling position same as vertex shader
 			vec3 noise_pos = (pos + vec3(_Offset.x, 0, _Offset.z)) / _Scale;
@@ -897,9 +925,13 @@ const source_fragment = "
 			vec4 direct_light = albedo * ndotl;
 			vec4 ambient_light = albedo * _AmbientLight;
 			vec4 specular_light = albedo * specular_intensity;
+			
+			// Shadows
+			float shadow_value = calc_shadow_value(32);
+			// float shadow_value = get_terrain_height(pos.xz);
 
 			// Combine lighting values, clip to prevent pixel values greater than 1 which would really really mess up the gamma correction below
-			vec4 lit = clamp(direct_light + ambient_light + specular_light, vec4(0), vec4(1));
+			vec4 lit = clamp((direct_light + ambient_light + specular_light)*shadow_value, vec4(0), vec4(1));
 			
 			// Add fog
 			if (_FogColor != vec4(0)) {
