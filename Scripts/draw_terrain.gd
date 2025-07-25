@@ -875,23 +875,37 @@ const source_fragment = "
 		
 		// return 0 or 1 indicating if the point is blocked by other terrain (1 = unobstructed)
 		float calc_shadow_value(float steps) {
-			float max_height = 50.0;
+			float max_height = 75.0;
 			
-			float step_size = 1.0;
+			float step_size = 50.0 / steps;
 			float dist = 0.1;
 			
-			for (int i = 0; i<steps; i++) {
-				vec3 current_position = pos + dist * (_LightDirection);
-				
-				if (current_position.y >= max_height) break;
+			// Hard Shadows
+			//for (int i = 0; i<steps; i++) {
+			//	vec3 current_position = pos + dist * (_LightDirection);
+			//	
+			//	if (current_position.y >= max_height) break;
+			//	float terrain_height = get_terrain_height(current_position);
+			//	if (current_position.y - terrain_height < 0.001) {
+			//		return 0.0;
+			//	}
+			//	
+			//	dist += step_size;
+			//}
+			//return 1.0;
+			
+			
+			// Soft Shadows
+			float res = 1.0;
+			for (int i=0; i<steps; i++) {
+				vec3 current_position = pos + (dist * _LightDirection);
 				float terrain_height = get_terrain_height(current_position);
-				if (current_position.y - terrain_height < 0.001) {
-					return 0.0;
-				}
-				
+				float height_difference = current_position.y - terrain_height;
+				res = min(res, steps * height_difference / dist);
+				if (res < 0.0001 || current_position.y > max_height) break;
 				dist += step_size;
 			}
-			return 1.0;
+			return clamp(res, 0.25, 1.0);
 		}
 		
 		void main() {
@@ -927,7 +941,7 @@ const source_fragment = "
 			vec4 specular_light = albedo * specular_intensity;
 			
 			// Shadows
-			float shadow_value = calc_shadow_value(32);
+			float shadow_value = calc_shadow_value(16);
 			// float shadow_value = get_terrain_height(pos.xz);
 
 			// Combine lighting values, clip to prevent pixel values greater than 1 which would really really mess up the gamma correction below

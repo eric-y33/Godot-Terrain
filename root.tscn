@@ -45,7 +45,7 @@ specular_highlight = 14.375
 fog_color = Color(0.47, 0.6, 0.77, 1)
 fog_min_dist = 13.281
 fog_max_dist = 106.065
-exp_fog_density = 0.0
+exp_fog_density = 0.18
 metadata/_custom_type_script = "uid://7n58awc2ols0"
 
 [sub_resource type="Compositor" id="Compositor_1i1cu"]
@@ -54,7 +54,7 @@ compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_vvh5
 [node name="Root" type="Node3D"]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.150891, 0.684645, 0.713087, -0.371413, -0.70776, 0.600939, 0.916125, -0.174173, 0.36108, 0, 40.2662, 0)
+transform = Transform3D(-0.893724, 0.447914, -0.0251187, -0.371727, -0.708035, 0.60042, 0.251152, 0.545947, 0.79929, 0, 40.2662, 0)
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(0.512193, 0.125526, 0.849648, 0, 0.989262, -0.146152, -0.858871, 0.074858, 0.506693, 76.9254, 11.3292, 35.9251)
