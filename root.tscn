@@ -1,11 +1,13 @@
-[gd_scene load_steps=6 format=3 uid="uid://bs3wao3xrtlmq"]
+[gd_scene load_steps=7 format=3 uid="uid://bs3wao3xrtlmq"]
 
 [ext_resource type="Script" uid="uid://btn8i0m76hx2y" path="res://Scripts/Camera/debug_camera_controller.gd" id="1_hekff"]
+[ext_resource type="Script" uid="uid://cmybgkurbqk8t" path="res://Scripts/rotate_light.gd" id="1_vvh5c"]
 [ext_resource type="Script" uid="uid://7n58awc2ols0" path="res://Scripts/draw_terrain.gd" id="2_pyidc"]
 
 [sub_resource type="Environment" id="Environment_7owt0"]
 background_mode = 1
-background_color = Color(0.239216, 0.239216, 0.239216, 1)
+background_color = Color(0.661317, 0.847042, 0.927171, 1)
+background_energy_multiplier = 0.9
 tonemap_white = 1.68
 glow_normalized = true
 glow_intensity = 1.75
@@ -44,8 +46,8 @@ ambient_light = Color(0.411765, 0.411765, 0.411765, 1)
 specular_highlight = 14.375
 fog_color = Color(0.47, 0.6, 0.77, 1)
 fog_min_dist = 13.281
-fog_max_dist = 106.065
-exp_fog_density = 0.18
+fog_max_dist = 130.0
+exp_fog_density = 0.45
 metadata/_custom_type_script = "uid://7n58awc2ols0"
 
 [sub_resource type="Compositor" id="Compositor_1i1cu"]
@@ -54,10 +56,13 @@ compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_vvh5
 [node name="Root" type="Node3D"]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.893724, 0.447914, -0.0251187, -0.371727, -0.708035, 0.60042, 0.251152, 0.545947, 0.79929, 0, 40.2662, 0)
+transform = Transform3D(0.99824, -0.017735, 0.0565926, 0, 0.95424, 0.299041, -0.0593064, -0.298514, 0.952561, 0, 40, 0)
+script = ExtResource("1_vvh5c")
+from = Vector3(90, -360, 0)
+to = Vector3(-18, 0, 0)
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.512193, 0.125526, 0.849648, 0, 0.989262, -0.146152, -0.858871, 0.074858, 0.506693, 76.9254, 11.3292, 35.9251)
+transform = Transform3D(0.914319, -0.0365315, 0.403343, -0.00173758, 0.99556, 0.0941083, -0.404991, -0.0867459, 0.910196, 40.077, -8.784, 31.58)
 script = ExtResource("1_hekff")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
