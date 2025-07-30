@@ -1,3 +1,15 @@
+# Godot Shader Enhancements
+
+My improvements include:
+- Separating mesh generation from shader recompilation
+- Linear and exponential fog
+- Specular highlights
+- Soft and hard shadows
+
+![demo](./demo.gif)
+
+Everything after "Lambertian Diffuse" in the demo above is my own work. Original project details follow this section (the fog effect in the image below was not included in the original repository).
+
 # Godot Terrain Generator
 
 by Acerola
