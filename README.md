@@ -1,6 +1,6 @@
 # Godot Shader Enhancements
 
-My improvements include:
+[My submission for Acerola's Dirt Jam](https://berc33.itch.io/godot-shader-enhancements). Improvements include:
 - Separating mesh generation from shader recompilation
 - Linear and exponential fog
 - Specular highlights
